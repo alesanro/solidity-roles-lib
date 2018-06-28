@@ -4,7 +4,8 @@
   "description": "Roles Shared Library",
   "main": "truffle.js",
   "scripts": {
-    "test": "truffle test"
+    "test": "truffle test",
+    "coverage": "./node_modules/.bin/solidity-coverage"
   },
   "repository": {
     "type": "git",
@@ -22,9 +23,11 @@
   },
   "homepage": "https://github.com/ChronoBank/solidity-roles-lib#readme",
   "dependencies": {
-    "solidity-storage-lib": "ChronoBank/solidity-storage-lib.git#v0.1.2"
+    "solidity-storage-lib": "ChronoBank/solidity-storage-lib.git#v0.1.2",
+    "solidity-shared-lib": "ChronoBank/solidity-shared-lib.git"
   },
   "devDependencies": {
+    "coveralls": "^3.0.1",
     "ganache-cli": "^6.1.4",
     "solidity-coverage": "^0.5.4",
     "truffle": "^4.1.13"
