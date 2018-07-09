@@ -5,8 +5,9 @@
 
 pragma solidity ^0.4.21;
 
-import 'solidity-storage-lib/contracts/StorageAdapter.sol';
-import 'solidity-shared-lib/contracts/Owned.sol';
+
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-shared-lib/contracts/Owned.sol";
 
 
 contract Roles2Library is StorageAdapter, Owned {
@@ -26,10 +27,10 @@ contract Roles2Library is StorageAdapter, Owned {
     event PublicCapabilityAdded(address indexed self, address indexed code, bytes4 sig);
     event PublicCapabilityRemoved(address indexed self, address indexed code, bytes4 sig);
 
-    StorageInterface.AddressBoolMapping rootUsers;
-    StorageInterface.AddressBytes32Mapping userRoles;
-    StorageInterface.AddressBytes4Bytes32Mapping capabilityRoles;
-    StorageInterface.AddressBytes4BoolMapping publicCapabilities;
+    StorageInterface.AddressBoolMapping internal rootUsers;
+    StorageInterface.AddressBytes32Mapping internal userRoles;
+    StorageInterface.AddressBytes4Bytes32Mapping internal capabilityRoles;
+    StorageInterface.AddressBytes4BoolMapping internal publicCapabilities;
 
     address public eventsHistory;
 
@@ -41,45 +42,109 @@ contract Roles2Library is StorageAdapter, Owned {
     }
 
     constructor(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) public {
-        rootUsers.init('rootUsers');
-        userRoles.init('userRoles');
-        capabilityRoles.init('capabilityRoles');
-        publicCapabilities.init('publicCapabilities');
+        rootUsers.init("rootUsers");
+        userRoles.init("userRoles");
+        capabilityRoles.init("capabilityRoles");
+        publicCapabilities.init("publicCapabilities");
     }
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner external returns (uint) {
-        eventsHistory = _eventsHistory;
-    }
-
-    function getEventsHistory() public view returns (address) {
-        return eventsHistory != address(0) ? eventsHistory : address(this);
-    }
-
-    function getUserRoles(address _user) public view returns (bytes32) {
-        return store.get(userRoles, _user);
-    }
-
-    function getCapabilityRoles(address _code, bytes4 _sig) public view returns (bytes32) {
-        return store.get(capabilityRoles, _code, _sig);
-    }
-
-    function canCall(address _user, address _code, bytes4 _sig) public view returns (bool) {
+    function canCall(
+        address _user, 
+        address _code, 
+        bytes4 _sig
+    ) 
+    public 
+    view 
+    returns (bool) 
+    {
         if (isUserRoot(_user) || isCapabilityPublic(_code, _sig)) {
             return true;
         }
         return bytes32(0) != getUserRoles(_user) & getCapabilityRoles(_code, _sig);
     }
 
-    function bitNot(bytes32 _input) public pure returns (bytes32) {
-        return (_input ^ bytes32(uint(-1)));
+    function setupEventsHistory(address _eventsHistory) 
+    onlyContractOwner 
+    external 
+    returns (uint) 
+    {
+        eventsHistory = _eventsHistory;
     }
 
-    function setRootUser(address _user, bool _enabled) onlyContractOwner external returns (uint) {
+    function getEventsHistory() 
+    public 
+    view 
+    returns (address) 
+    {
+        return eventsHistory != 0x0 ? eventsHistory : address(this);
+    }
+
+    function getUserRoles(address _user) 
+    public 
+    view 
+    returns (bytes32) 
+    {
+        return store.get(userRoles, _user);
+    }
+
+    function isUserRoot(address _user) 
+    public 
+    view 
+    returns (bool) 
+    {
+        return store.get(rootUsers, _user);
+    }
+
+    function hasUserRole(address _user, uint8 _role) 
+    public 
+    view 
+    returns (bool) 
+    {
+        return bytes32(0) != (getUserRoles(_user) & _shift(_role));
+    }
+
+    function getCapabilityRoles(
+        address _code, 
+        bytes4 _sig
+    ) 
+    public 
+    view 
+    returns (bytes32) 
+    {
+        return store.get(capabilityRoles, _code, _sig);
+    }
+
+    function isCapabilityPublic(
+        address _code, 
+        bytes4 _sig
+    ) 
+    public 
+    view 
+    returns (bool) 
+    {
+        return store.get(publicCapabilities, _code, _sig);
+    }
+
+    function setRootUser(
+        address _user, 
+        bool _enabled
+    ) 
+    onlyContractOwner 
+    external 
+    returns (uint) 
+    {
         store.set(rootUsers, _user, _enabled);
         return OK;
     }
 
-    function addUserRole(address _user, uint8 _role) authorized external returns (uint) {
+    function addUserRole(
+        address _user, 
+        uint8 _role
+    ) 
+    authorized 
+    external 
+    returns (uint) 
+    {
         if (hasUserRole(_user, _role)) {
             return _emitErrorCode(ROLES_ALREADY_EXISTS);
         }
@@ -87,7 +152,14 @@ contract Roles2Library is StorageAdapter, Owned {
         return _setUserRole(_user, _role, true);
     }
 
-    function removeUserRole(address _user, uint8 _role) authorized external returns (uint) {
+    function removeUserRole(
+        address _user, 
+        uint8 _role
+    ) 
+    authorized 
+    external 
+    returns (uint) 
+    {
         if (!hasUserRole(_user, _role)) {
             return _emitErrorCode(ROLES_NOT_FOUND);
         }
@@ -95,22 +167,46 @@ contract Roles2Library is StorageAdapter, Owned {
         return _setUserRole(_user, _role, false);
     }
 
-    function setPublicCapability(address _code, bytes4 _sig, bool _enabled) onlyContractOwner external returns (uint) {
+    function setPublicCapability(
+        address _code, 
+        bytes4 _sig, 
+        bool _enabled
+    ) 
+    onlyContractOwner 
+    external 
+    returns (uint) 
+    {
         store.set(publicCapabilities, _code, _sig, _enabled);
 
         if (_enabled) {
-            _emitPublicCapabilityAdded(_code, _sig);
+            _getEmitter().emitPublicCapabilityAdded(_code, _sig);
         } else {
-            _emitPublicCapabilityRemoved(_code, _sig);
+            _getEmitter().emitPublicCapabilityRemoved(_code, _sig);
         }
         return OK;
     }
 
-    function addRoleCapability(uint8 _role, address _code, bytes4 _sig) onlyContractOwner public returns (uint) {
+    function addRoleCapability(
+        uint8 _role, 
+        address _code, 
+        bytes4 _sig
+    ) 
+    onlyContractOwner 
+    public 
+    returns (uint) 
+    {
         return _setRoleCapability(_role, _code, _sig, true);
     }
 
-    function removeRoleCapability(uint8 _role, address _code, bytes4 _sig) onlyContractOwner public returns (uint) {
+    function removeRoleCapability(
+        uint8 _role, 
+        address _code, 
+        bytes4 _sig
+    ) 
+    onlyContractOwner 
+    public 
+    returns (uint) 
+    {
         if (getCapabilityRoles(_code, _sig) == 0) {
             return _emitErrorCode(ROLES_NOT_FOUND);
         }
@@ -118,79 +214,66 @@ contract Roles2Library is StorageAdapter, Owned {
         return _setRoleCapability(_role, _code, _sig, false);
     }
 
-    function isUserRoot(address _user) public view returns (bool) {
-        return store.get(rootUsers, _user);
-    }
-
-    function isCapabilityPublic(address _code, bytes4 _sig) public view returns (bool) {
-        return store.get(publicCapabilities, _code, _sig);
-    }
-
-    function hasUserRole(address _user, uint8 _role) public view returns (bool) {
-        return bytes32(0) != getUserRoles(_user) & _shift(_role);
-    }
-
-    function _setUserRole(address _user, uint8 _role, bool _enabled) internal returns (uint) {
+    function _setUserRole(
+        address _user, 
+        uint8 _role, 
+        bool _enabled
+    ) 
+    internal 
+    returns (uint) 
+    {
         bytes32 lastRoles = getUserRoles(_user);
         bytes32 shifted = _shift(_role);
 
         if (_enabled) {
             store.set(userRoles, _user, lastRoles | shifted);
-            _emitRoleAdded(_user, _role);
+            _getEmitter().emitRoleAdded(_user, _role);
             return OK;
         }
 
-        store.set(userRoles, _user, lastRoles & bitNot(shifted));
-        _emitRoleRemoved(_user, _role);
+        store.set(userRoles, _user, lastRoles & _bitNot(shifted));
+        _getEmitter().emitRoleRemoved(_user, _role);
         return OK;
     }
 
-    function _setRoleCapability(uint8 _role, address _code, bytes4 _sig, bool _enabled) internal returns (uint) {
+    function _setRoleCapability(
+        uint8 _role, 
+        address _code, 
+        bytes4 _sig, 
+        bool _enabled
+    ) 
+    internal 
+    returns (uint) 
+    {
         bytes32 lastRoles = getCapabilityRoles(_code, _sig);
         bytes32 shifted = _shift(_role);
 
         if (_enabled) {
             store.set(capabilityRoles, _code, _sig, lastRoles | shifted);
-            _emitCapabilityAdded(_code, _sig, _role);
+            _getEmitter().emitCapabilityAdded(_code, _sig, _role);
         } else {
-            store.set(capabilityRoles, _code, _sig, lastRoles & bitNot(shifted));
-            _emitCapabilityRemoved(_code, _sig, _role);
+            store.set(capabilityRoles, _code, _sig, lastRoles & _bitNot(shifted));
+            _getEmitter().emitCapabilityRemoved(_code, _sig, _role);
         }
 
         return OK;
     }
 
-    function _shift(uint8 _role) pure internal returns (bytes32) {
+    function _shift(uint8 _role) private pure returns (bytes32) {
         return bytes32(uint(uint(2) ** uint(_role)));
     }
 
+    function _bitNot(bytes32 _input) private pure returns (bytes32) {
+        return (_input ^ bytes32(uint(-1)));
+    }
+
+    function _getEmitter() private view returns (Roles2Library) {
+        return Roles2Library(getEventsHistory());
+    }
+
     function _emitErrorCode(uint _errorCode) internal returns (uint) {
-        Roles2Library(getEventsHistory()).emitError(_errorCode);
+        _getEmitter().emitError(_errorCode);
         return _errorCode;
-    }
-
-    function _emitRoleAdded(address _user, uint8 _role) internal {
-        Roles2Library(getEventsHistory()).emitRoleAdded(_user, _role);
-    }
-
-    function _emitRoleRemoved(address _user, uint8 _role) internal {
-        Roles2Library(getEventsHistory()).emitRoleRemoved(_user, _role);
-    }
-
-    function _emitCapabilityAdded(address _code, bytes4 _sig, uint8 _role) internal {
-        Roles2Library(getEventsHistory()).emitCapabilityAdded(_code, _sig, _role);
-    }
-
-    function _emitCapabilityRemoved(address _code, bytes4 _sig, uint8 _role) internal {
-        Roles2Library(getEventsHistory()).emitCapabilityRemoved(_code, _sig, _role);
-    }
-
-    function _emitPublicCapabilityAdded(address _code, bytes4 _sig) internal {
-        Roles2Library(getEventsHistory()).emitPublicCapabilityAdded(_code, _sig);
-    }
-
-    function _emitPublicCapabilityRemoved(address _code, bytes4 _sig) internal {
-        Roles2Library(getEventsHistory()).emitPublicCapabilityRemoved(_code, _sig);
     }
 
     function emitError(uint _errorCode) public {

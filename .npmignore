@@ -1,0 +1,8 @@
+contracts/helpers/*
+contracts/Migrations.sol
+
+test/
+migrations/
+.solcover.js
+truffle.js
+.gitattributes
