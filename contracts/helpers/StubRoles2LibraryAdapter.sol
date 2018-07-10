@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
 import "../Roles2LibraryAdapter.sol";
@@ -6,7 +6,7 @@ import "../Roles2LibraryAdapter.sol";
 
 contract StubRoles2LibraryAdapter is Roles2LibraryAdapter {
 
-    constructor(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {
+    function StubRoles2LibraryAdapter(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {
 
     }
 
