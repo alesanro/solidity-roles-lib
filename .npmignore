@@ -6,3 +6,6 @@ migrations/
 .solcover.js
 truffle.js
 .gitattributes
+
+.eslint*
+.solium*

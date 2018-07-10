@@ -8,9 +8,10 @@ pragma solidity ^0.4.21;
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
 import "solidity-shared-lib/contracts/Owned.sol";
+import "solidity-eventshistory-lib/contracts/MultiEventsHistoryAdapter.sol";
 
 
-contract Roles2Library is StorageAdapter, Owned {
+contract Roles2Library is StorageAdapter, Owned, MultiEventsHistoryAdapter {
 
     uint constant OK = 1;
 
@@ -31,8 +32,6 @@ contract Roles2Library is StorageAdapter, Owned {
     StorageInterface.AddressBytes32Mapping internal userRoles;
     StorageInterface.AddressBytes4Bytes32Mapping internal capabilityRoles;
     StorageInterface.AddressBytes4BoolMapping internal publicCapabilities;
-
-    address public eventsHistory;
 
     modifier authorized {
         if (msg.sender != contractOwner && !canCall(msg.sender, this, msg.sig)) {
@@ -68,15 +67,8 @@ contract Roles2Library is StorageAdapter, Owned {
     external 
     returns (uint) 
     {
-        eventsHistory = _eventsHistory;
-    }
-
-    function getEventsHistory() 
-    public 
-    view 
-    returns (address) 
-    {
-        return eventsHistory != 0x0 ? eventsHistory : address(this);
+        _setEventsHistory(_eventsHistory);
+        return OK;        
     }
 
     function getUserRoles(address _user) 
@@ -277,30 +269,30 @@ contract Roles2Library is StorageAdapter, Owned {
     }
 
     function emitError(uint _errorCode) public {
-        emit Error(msg.sender, _errorCode);
+        emit Error(_self(), _errorCode);
     }
 
     function emitRoleAdded(address _user, uint8 _role) public {
-        emit RoleAdded(msg.sender, _user, _role);
+        emit RoleAdded(_self(), _user, _role);
     }
 
     function emitRoleRemoved(address _user, uint8 _role) public {
-        emit RoleRemoved(msg.sender, _user, _role);
+        emit RoleRemoved(_self(), _user, _role);
     }
 
     function emitCapabilityAdded(address _code, bytes4 _sig, uint8 _role) public {
-        emit CapabilityAdded(msg.sender, _code, _sig, _role);
+        emit CapabilityAdded(_self(), _code, _sig, _role);
     }
 
     function emitCapabilityRemoved(address _code, bytes4 _sig, uint8 _role) public {
-        emit CapabilityRemoved(msg.sender, _code, _sig, _role);
+        emit CapabilityRemoved(_self(), _code, _sig, _role);
     }
 
     function emitPublicCapabilityAdded(address _code, bytes4 _sig) public {
-        emit PublicCapabilityAdded(msg.sender, _code, _sig);
+        emit PublicCapabilityAdded(_self(), _code, _sig);
     }
 
     function emitPublicCapabilityRemoved(address _code, bytes4 _sig) public {
-        emit PublicCapabilityRemoved(msg.sender, _code, _sig);
+        emit PublicCapabilityRemoved(_self(), _code, _sig);
     }
 }

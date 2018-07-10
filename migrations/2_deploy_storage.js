@@ -14,6 +14,8 @@ module.exports = function(deployer, network) {
 			await storage.setManager(StubStorageManager.address)
 
 			await deployer.deploy(Roles2Library, Storage.address, "Roles2Library")
+			const rolesLibrary = await Roles2Library.deployed()
+			await rolesLibrary.setupEventsHistory(rolesLibrary.address)
 
 			console.log("[MIGRATION] Test contracts: #done")
 		})

@@ -8,45 +8,45 @@ const ErrorsNamespace = require('../common/errors')
 
 contract('Roles2Library', function(accounts) {
 	const reverter = new Reverter(web3)
-    const asserts = Asserts(assert)
-    
-    const users = {
-        contractOwner: accounts[0],
-        user1: accounts[1],
-        user2: accounts[2],
-    }
+	const asserts = Asserts(assert)
+
+	const users = {
+		contractOwner: accounts[0],
+		user1: accounts[1],
+		user2: accounts[2],
+	}
 
 	let rolesLibrary
-    
+
 	before('setup', async () => {
-        rolesLibrary = await Roles2Library.deployed()
+		rolesLibrary = await Roles2Library.deployed()
 		await reverter.promisifySnapshot()
-    })
+	})
 
-    afterEach('revert', async () => {
-        await reverter.promisifyRevert()
-    })
-    
-    describe("Initial", () => {
-        const newEventsHistory = '0xffffffffffffffffffffffffffffffffffffffff'
+	afterEach('revert', async () => {
+		await reverter.promisifyRevert()
+	})
 
-        afterEach(async () => {
-            await reverter.promisifyRevert()
-        })
+	describe("Initial", () => {
+		const newEventsHistory = '0xffffffffffffffffffffffffffffffffffffffff'
 
-        it("should be able to setup events history", async () => {
-            assert.notEqual(
-                await rolesLibrary.eventsHistory.call(),
-                newEventsHistory
-            )
+		afterEach(async () => {
+			await reverter.promisifyRevert()
+		})
 
-            await rolesLibrary.setupEventsHistory(newEventsHistory, { from: users.contractOwner, })
-            assert.equal(
-                await rolesLibrary.eventsHistory.call(),
-                newEventsHistory
-            )
-        })
-    })
+		it("should be able to setup events history", async () => {
+			assert.notEqual(
+				await rolesLibrary.getEventsHistory.call(),
+				newEventsHistory
+			)
+
+			await rolesLibrary.setupEventsHistory(newEventsHistory, { from: users.contractOwner, })
+			assert.equal(
+				await rolesLibrary.getEventsHistory.call(),
+				newEventsHistory
+			)
+		})
+	})
 
 	describe('User Roles', function() {
 		it('should add user role', () => {
@@ -57,23 +57,23 @@ contract('Roles2Library', function(accounts) {
 				.then(() => rolesLibrary.hasUserRole(user, role))
 				.then(asserts.isTrue)
 				.then(() => true)
-        })
-        
-        it("should NOT allow to call 'addUserRole' twice with ROLES_ALREADY_EXISTS code", async () => {
-            const user = accounts[1]
-            const role = 255
-            
-            assert.equal(
-                (await rolesLibrary.addUserRole.call(user, role)).toNumber(),
-                ErrorsNamespace.OK
-            )
-            await rolesLibrary.addUserRole(user, role)
-            
-            assert.equal(
-                (await rolesLibrary.addUserRole.call(user, role)).toNumber(),
-                ErrorsNamespace.ROLES_ALREADY_EXISTS
-            )
-        })
+		})
+
+		it("should NOT allow to call 'addUserRole' twice with ROLES_ALREADY_EXISTS code", async () => {
+			const user = accounts[1]
+			const role = 255
+
+			assert.equal(
+				(await rolesLibrary.addUserRole.call(user, role)).toNumber(),
+				ErrorsNamespace.OK
+			)
+			await rolesLibrary.addUserRole(user, role)
+
+			assert.equal(
+				(await rolesLibrary.addUserRole.call(user, role)).toNumber(),
+				ErrorsNamespace.ROLES_ALREADY_EXISTS
+			)
+		})
 
 		it('should emit RoleAdded event in EventsHistory', () => {
 			const user = accounts[1]
@@ -289,24 +289,24 @@ contract('Roles2Library', function(accounts) {
 				.then(() => rolesLibrary.canCall(user, code, sig))
 				.then(asserts.isTrue)
 				.then(() => true)
-        })
-        
-        it('should NOT allow to call if capability was public but then disabled', async () => {
+		})
+
+		it('should NOT allow to call if capability was public but then disabled', async () => {
 			const user = accounts[1]
 			const code = '0xffffffffffffffffffffffffffffffffffffffff'
 			const sig = '0xffffffff'
 
-            await rolesLibrary.setPublicCapability(code, sig, true)
-            assert.isTrue(await rolesLibrary.canCall(user, code, sig))
+			await rolesLibrary.setPublicCapability(code, sig, true)
+			assert.isTrue(await rolesLibrary.canCall(user, code, sig))
 
-            const tx = await rolesLibrary.setPublicCapability(code, sig, false)
-            {
-                const event = (await eventsHelper.findEvent([rolesLibrary,], tx, "PublicCapabilityRemoved"))[0]
-                assert.isDefined(event)
-                assert.equal(event.args.code, code)
-                assert.equal(event.args.sig, sig)
-            }
-            assert.isFalse(await rolesLibrary.canCall(user, code, sig))
+			const tx = await rolesLibrary.setPublicCapability(code, sig, false)
+			{
+				const event = (await eventsHelper.findEvent([rolesLibrary,], tx, "PublicCapabilityRemoved"))[0]
+				assert.isDefined(event)
+				assert.equal(event.args.code, code)
+				assert.equal(event.args.sig, sig)
+			}
+			assert.isFalse(await rolesLibrary.canCall(user, code, sig))
 		})
 
 		it('should allow to call if has role with capability', () => {
